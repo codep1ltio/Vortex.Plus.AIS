@@ -13,7 +13,8 @@ fn main() -> wry::Result<()> {
     let js = include_str!("javascript/inject.js");
     let css = include_str!("style.css");
 
-    let script = format!(r#"(() => {{{} run(`{}`)}})();"#, js, css);
+    // This is what gets injected during runtime
+    let script = format!(r#"(() => {{{} run(`{}`)}})();"#, js, css); 
 
     let window = WindowBuilder::new()
         .with_title("Vortex Plus")
