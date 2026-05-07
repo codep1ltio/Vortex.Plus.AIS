@@ -18,10 +18,12 @@ async fn main() -> wry::Result<()> {
     let event_loop = EventLoop::new();
 
     // these are what gets injected during runtime
-    let js = include_str!("javascript/inject.js");
+    let inject = include_str!("javascript/inject.js");
+    let search = include_str!("javascript/search.js");
+    let shader = include_str!("javascript/shader.js");
     let css = include_str!("style.css");
 
-    let script = format!(r#"(() => {{{} run(`{}`)}})();"#, js, css); 
+    let script = format!(r#"(() => {{{} {} {} run(`{}`)}})();"#, inject, search, shader, css); 
 
     let window = WindowBuilder::new()
         .with_title("Vortex Plus")
