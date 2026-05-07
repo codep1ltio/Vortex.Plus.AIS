@@ -13,7 +13,7 @@ pub struct User {
     pub created_at: String,
 }
 
-static SESSION: &str = "session_token=b23298634b75f5ec18a609882f6b40103620c14c7d9d3e8cfae0a0fe276934bb";
+static SESSION: &str = "session_token=0067002d12584fe6fdda24da5c1c3ced743914e872231d7ccacf31b1ac91ba8e";
 
 pub fn fetch_client_name() -> String {
     ".".to_string()
