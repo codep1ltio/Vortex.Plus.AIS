@@ -4,6 +4,10 @@ a integrated server so Vortex Plus AIS users can access stuff that the extension
 
 Join our community: `https://discord.gg/Q8wZHJ8PuF`
 
+## Version 1.2
+- Updated Injectors to match
+  with current Vortex+ Extension
+
 ## Version 1.1
 - User fetching
 - Discord bot
