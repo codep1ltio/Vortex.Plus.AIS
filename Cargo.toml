@@ -6,3 +6,5 @@ edition = "2024"
 [dependencies]
 wry = "0.55"
 tao = "0.35"
+serenity = "0.12"
+tokio = { version = "1", features = ["full"] }
