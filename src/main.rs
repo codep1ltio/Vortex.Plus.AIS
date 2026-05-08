@@ -6,10 +6,6 @@ use tao::{
     window::WindowBuilder,
 };
 use wry::WebViewBuilder;
-use std::thread;
- 
-mod server;
-use server::data_bot;
 
 #[tokio::main]
 async fn main() -> wry::Result<()> {
@@ -34,14 +30,6 @@ async fn main() -> wry::Result<()> {
         .with_url("https://vortex.towerstats.com/")
         .with_initialization_script(&script)
         .build(&window)?;
-
-    thread::spawn(|| { // we need a seperate thread for the bot because we also have to run another window (we basically cant run 2 loops at same time and both are infinite)
-        let rt = tokio::runtime::Runtime::new().unwrap();
-
-        rt.block_on(async {
-            data_bot::init().await;
-        });
-    });
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
