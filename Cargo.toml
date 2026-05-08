@@ -5,7 +5,7 @@ edition = "2024"
 
 [[bin]]
 name = "vortex"
-path = "src/main.rs"
+path = "src/vortex.rs"
 
 [[bin]]
 name = "bootstrapper"
