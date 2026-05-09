@@ -1,7 +1,7 @@
 //Made by inuk, for https://github.com/inuk84/Vortex-2-plus-2
 
 console.log('VORTEX ENGINE OVERRIDDEN!')
-const STUDS_PER_TILE = 16;
+const STUDS_PER_TILE = 4;
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x87CEEB, 192, 480);
@@ -42,7 +42,17 @@ scene.add(sun);
 
 const tlLoader = new THREE.TextureLoader();
 const texCache = new Map();
-let textures = JSON.parse(window._textures.content);
+function local_thingy_platform_check(localPath) {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes("windows") || ua.includes("android")) {
+        return 'https://local.' + localPath;
+    }
+    return 'local://' + localPath;
+};
+let textures = {
+    stud: local_thingy_platform_check('stud.png'),
+    studNormal: local_thingy_platform_check('stud_normal.png')
+};
 function studTex(rx, ry) {
     const t = tlLoader.load(textures.stud);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -324,6 +334,23 @@ let extraVelX = 0, extraVelZ = 0;
 const overlay = document.getElementById('overlay');
 const crosshair = document.getElementById('crosshair');
 const cursorEl = document.getElementById('cursor');
+
+let leaveButton = document.createElement('span')
+leaveButton.innerHTML='Leave'
+overlay.appendChild(leaveButton);
+leaveButton.onclick=function(){
+    window.location.href = "https://vortex.towerstats.com/";
+}
+Object.assign(overlay.style, {
+    height: '100%',
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '10px'
+});
+
 let cursorX = window.innerWidth / 2;
 let cursorY = window.innerHeight / 2;
 
@@ -415,10 +442,10 @@ document.addEventListener('keyup', e => { keys[e.code] = false; });
 document.addEventListener('pointerlockchange', () => {
     locked = !!document.pointerLockElement;
     if (locked) {
-        overlay.classList.add('hidden');
+        overlay.style.opacity=0;
         cursorEl.style.transform = `translate(${cursorX}px, ${cursorY}px)`;
     } else {
-        overlay.classList.remove('hidden');
+        overlay.style.opacity=1;
         Object.keys(keys).forEach(k => keys[k] = false);
         rmb = false;
     }
