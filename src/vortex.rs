@@ -5,7 +5,8 @@ use tao::{
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
-use wry::WebViewBuilder;
+use wry::{WebViewBuilder, http};
+use std::borrow::Cow;
 
 #[tokio::main]
 async fn main() -> wry::Result<()> {
@@ -20,7 +21,7 @@ async fn main() -> wry::Result<()> {
     let maploader = include_str!("javascript/maploader.js");
     let css = include_str!("style.css");
 
-    let script = format!(r#"(() => {{{inject} {search} {shader} {maploader} run(`{css}`)}})();"#); 
+    let script = format!(r#"(() => {{{inject} {search} {shader} {maploader} run(`{css}`)}})();"#);
 
     let window = WindowBuilder::new()
         .with_title("Vortex Plus")
@@ -28,6 +29,27 @@ async fn main() -> wry::Result<()> {
         .unwrap();
 
     let _webview = WebViewBuilder::new()
+        .with_custom_protocol("app".into(), |_webview_id, request| {
+            let uri = request.uri().to_string();
+
+            if uri.ends_with("js/engine.js") {
+                let body: Cow<'static, [u8]> =
+                    Cow::Borrowed(include_bytes!("javascript/newEngine.js"));
+
+                return http::Response::builder()
+                    .status(200)
+                    .header("Content-Type", "application/javascript")
+                    .body(body)
+                    .unwrap();
+            }
+
+            http::Response::builder()
+                .status(404)
+                .header("Content-Type", "text/plain; charset=utf-8")
+                .body(Cow::Owned(b"not found".to_vec()))
+                .unwrap()
+                
+        })
         .with_url("https://vortex.towerstats.com/")
         .with_initialization_script(&script)
         .build(&window)?;
