@@ -1,6 +1,6 @@
 # Vortex AIS
 AIS is a version of Vortex2+2 built as an application with its own bootstrapper and integrated server.
-
+Join us: https://discord.gg/E9y6WfEdPW
 ---
 
 ## Why do we need a server?
@@ -46,14 +46,7 @@ Any contribution is appreciated.
 
 ---
 
-# Community
-
-Join our Discord server:
-
-https://discord.gg/E9y6WfEdPW
-
----
-
-# Version 1.0
-
-- Source code is now open source
+| Date | Version | Release |
+|------|-----------|--------|
+| 10/5/26  | v1.1      | Beta    |
+| ...  | v1.0      | Alpha    |
