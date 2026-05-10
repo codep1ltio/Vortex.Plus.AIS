@@ -82,10 +82,10 @@ let shaders = (function() {
                 vec3 mirrorCenter = vec3(sin(time * 0.22) * 18.0, 32.0 + sin(time * 0.31) * 3.0, cos(time * 0.2) * 18.0);
                 float sphereT = sphereHit(ro, rd, mirrorCenter, 9.0);
                 if (sphereT > 0.0) {vec3 hp = ro + rd * sphereT; vec3 n = normalize(hp - mirrorCenter); vec3 reflected = sky(reflect(rd, n), sun); float rim = pow(1.0 - sat(dot(-rd, n)), 3.0); float shade = sat(dot(n, sun) * 0.5 + 0.5); vec3 orb = reflected * (0.25 + 0.75 * shade) + vec3(0.65, 0.9, 1.0) * rim; col = mix(col, orb, 0.18 * (1.0 - smoothstep(0.0, 160.0, sphereT)));}
-                float ao = 1.0 - edge * 0.16;
+                float ao = 1.0 - edge * 0.06;
                 col *= ao; col += edge * mix(vec3(0.018, 0.028, 0.04), vec3(0.03, 0.045, 0.062), dayAmount);
                 float exposurePulse = mix(0.10, 0.72, dayAmount) + twilightAmount * 0.055 + sin(time * 0.18) * 0.006;
-                col = filmic(col * exposurePulse); col = mix(col, col * col * (3.0 - 2.0 * col), mix(0.05, 0.12, dayAmount)); col *= 0.92 + vignette * 0.08; col = mix(col * vec3(0.26, 0.31, 0.48), col, dayAmount); col += vec3(0.18, 0.08, 0.025) * twilightAmount * 0.08;
+                col = filmic(col * (exposurePulse * 1.15)); col = mix(col, col * col * (3.0 - 2.0 * col), mix(0.05, 0.12, dayAmount)); col *= 0.92 + vignette * 0.08; col = mix(col * vec3(0.26, 0.31, 0.48), col, dayAmount); col += vec3(0.18, 0.08, 0.025) * twilightAmount * 0.08;
                 float gray = dot(col, vec3(0.299, 0.587, 0.114));
                 float saturation = mix(${NIGHT_SATURATION.toFixed(2)}, ${DAY_SATURATION.toFixed(2)}, dayAmount);
                 col = mix(vec3(gray), col, saturation); col *= mix(${MIN_SCENE_EXPOSURE.toFixed(2)}, ${MAX_SCENE_EXPOSURE.toFixed(2)}, dayAmount);
@@ -204,6 +204,8 @@ let shaders = (function() {
         const shadowTarget = new THREE.Object3D();
         const shadowSun = new THREE.DirectionalLight(0xfff1d0, 0.82);
         const moonLight = new THREE.DirectionalLight(0x9fb7ff, 0.12);
+        const fillLight = new THREE.DirectionalLight(0xffe6c7, 0.18);
+        fillLight.position.set(-60, 80, -40);
         const skyUniforms = { sunDir: uniforms.sunDir, moonDir: uniforms.moonDir, dayAmount: uniforms.dayAmount, twilightAmount: uniforms.twilightAmount, time: uniforms.time, };
         const skyGeo = THREE.SphereGeometry ? new THREE.SphereGeometry(1800, 32, 16) : new THREE.SphereBufferGeometry(1800, 32, 16);
         const skyMat = new THREE.ShaderMaterial({
@@ -327,9 +329,9 @@ let shaders = (function() {
         moonLight.castShadow = false;
         configureDirectionalShadow(shadowSun, 96);
         configureExistingShadows();
-        addedLights.push(hemi, rim, glint, shadowSun, moonLight);
+        addedLights.push(hemi, rim, glint, shadowSun, moonLight, fillLight);
         addedObjects.push(shadowTarget, skyDome, sunSprite, moonSprite);
-        scene.add(skyDome, sunSprite, moonSprite, shadowTarget, hemi, rim, glint, shadowSun, moonLight);
+        scene.add(skyDome, sunSprite, moonSprite, shadowTarget, hemi, rim, glint, shadowSun, moonLight, fillLight);
         //I feel I don't need to explain everything that goes on because of the names
         rendererProto.render = function patchedVortexRaytraceRender(renderScene, renderCamera) {
             if (inPost || !enabled || renderScene !== scene) { return baseRender.call(this, renderScene, renderCamera); }
@@ -394,9 +396,9 @@ let shaders = (function() {
             mixColor(rim.color, [0.16, 0.20, 0.38], [0.70, 0.84, 1.00], dayAmount);
             mixColor(shadowSun.color, [0.35, 0.28, 0.18], [1.00, 0.88, 0.66], dayAmount);
             if (warmAmount > 0.02) { rim.color.lerp(new THREE.Color(0xff8a3d), warmAmount * 0.45); shadowSun.color.lerp(new THREE.Color(0xff9d43), warmAmount * 0.35); }
-            hemi.intensity = enabled ? lerp(0.10, 0.55, dayAmount) + twilightAmount * 0.018 : 0;
+            hemi.intensity = enabled ? lerp(0.22, 0.72, dayAmount) + twilightAmount * 0.018 : 0;
             rim.intensity = enabled ? lerp(0.006, 0.16, dayAmount) + warmAmount * 0.08 : 0;
-            shadowSun.intensity = enabled ? (0.66 * activeShadow + warmAmount * 0.16) : 0;
+            shadowSun.intensity = enabled ? (0.42 * activeShadow + warmAmount * 0.10) : 0;
             moonLight.intensity = enabled ? 0.105 * smoothstep(0.22, 0.94, nightAmount) * (1 - twilightAmount * 0.7) : 0;
             originalLightStates.forEach(({ light, intensity }) => {
                 if (!enabled) return;
