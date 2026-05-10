@@ -17,11 +17,11 @@ fn main() -> wry::Result<()> {
     let event_loop = EventLoop::new();
 
     // these are what gets injected during runtime
-    let overrider = include_str!("javascript/overrider.js");
-    let inject = include_str!("javascript/inject.js");
-    let search = include_str!("javascript/search.js");
-    let shader = include_str!("javascript/shader.js");
-    let maploader = include_str!("javascript/maploader.js");
+    let overrider = include_str!("Vortex2+2/javascript/overrider.js");
+    let inject = include_str!("Vortex2+2/javascript/inject.js");
+    let search = include_str!("Vortex2+2/javascript/search.js");
+    let shader = include_str!("Vortex2+2/javascript/shader.js");
+    let maploader = include_str!("Vortex2+2/javascript/maploader.js");
     let css = include_str!("style.css");
 
     let script = format!(
@@ -45,7 +45,7 @@ fn main() -> wry::Result<()> {
         .with_custom_protocol("local".into(), |_id, request| {
             let uri = request.uri().to_string();
             let file = uri.trim_start_matches("local://").trim_end_matches('/');
-            let body = match std::fs::read(format!("src/redirects/{}", file)) {
+            let body = match std::fs::read(format!("src/Vortex2+2/redirects/{}", file)) {
                 Ok(v) => v,
                 Err(_) => {
                     return http::Response::builder()
