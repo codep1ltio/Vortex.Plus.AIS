@@ -38,9 +38,30 @@ sun.shadow.camera.bottom = -256;
 sun.shadow.autoUpdate = true;
 scene.add(sun);
 
+function localurl(localPath) {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes("windows") || ua.includes("android")) {
+        return 'https://local.' + localPath;
+    }
+    return 'local://' + localPath;
+};
+
 const tlLoader = new THREE.TextureLoader();
 const texCache = new Map();
-let importedAssets = JSON.parse(window._importedAssets.content);
+const importedAssets = {
+    stud: localurl("Vortex2+2/assets/stud.png"),
+    studNormal: localurl("Vortex2+2/assets/stud_normal.png"),
+
+    swordMdl: localurl("Vortex2+2/assets/sword_mdl.fbx"),
+
+    swordSlash: localurl("Vortex2+2/assets/sword_slash.mp3"),
+
+    swordTex: localurl("Vortex2+2/assets/sword.png"),
+
+    sfothSong: localurl("Vortex2+2/assets/sfoth_song.mp3"),
+
+    oofSound: localurl("Vortex2+2/assets/oof.mp3")
+};
 function studTex(rx, ry) {
     const t = tlLoader.load(importedAssets.stud);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -308,11 +329,10 @@ let climbFwdX = 0, climbFwdZ = 0;
 let climbBlock = null;
 let climbCooldown = 0;
 const CLIMB_RISE_SPEED = 11.2;
-const CLIMB_SIDE_SPEED = 11.2;
-const CLIMB_REACH = 0.1;
+const CLIMB_REACH = 0.5;
 const CLIMB_FALL_CUTOFF = -200;
 const CLIMB_MAX_PART_H = 1.5;
-const CLIMB_WINDOW = 2.2;
+const CLIMB_WINDOW = 2.4;
 const CLIMB_JUMP_UP = 38;
 const CLIMB_JUMP_BACK_V = 14;
 const HANG_DEPTH = 1.2;
@@ -534,7 +554,7 @@ renderer.domElement.addEventListener('click', () => {
 let canPlaySounds = false;
 overlay.addEventListener('click', () => {
     if (leaveButton.matches(':hover')) { return }
-    canPlaySounds=true;
+    canPlaySounds = true;
     if (window.SWORD_FIGHT) {
         sfothThemeSong.play();
     }
@@ -1341,6 +1361,8 @@ function swordUpdate() {
         fbxLoader.load(importedAssets.swordMdl, (fbx) => {
             fbx.scale.multiplyScalar(0.005);
             sword = fbx;
+            let mat = new THREE.MeshPhongMaterial({map:tlLoader.load(importedAssets.swordTex)});
+            sword.children[0].material=mat;
             sword.castShadow = true;
             sword.receiveShadow = true;
             sword.rotation.order = 'YXZ';
@@ -1368,7 +1390,7 @@ function swordUpdate() {
     sword.rotation.y = character.rotation.y;
     sword.rotation.x = slicing ? Math.PI * 0.5 : 0
 
-    if(window.VOID_DIE && character.position.y<=CHAR_STAND_Y+1){
+    if (window.VOID_DIE && character.position.y <= CHAR_STAND_Y + 1) {
         playerSpecialValues.health = -999;
     }
 
@@ -1378,7 +1400,7 @@ function swordUpdate() {
         }
         let sp = window.chooseSpawnPoint(window.map);
         _spawnPoint.x = sp.x;
-        _spawnPoint.y = sp.y+CHAR_FOOT_OFFSET;
+        _spawnPoint.y = sp.y + CHAR_FOOT_OFFSET;
         _spawnPoint.z = sp.z;
 
         character.position.x = _spawnPoint.x + 9999;

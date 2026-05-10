@@ -1,7 +1,7 @@
 const redirects = {
-    ["vortex-engine.js"]: "new_engine.js",
-    ["multiplayer.js"]: "multiplayer2+2.js",
-    ["parts.js"]: "new_demoparts.js"
+    ["vortex-engine.js"]: "Vortex2+2/vortex2+2_engine.js",
+    ["multiplayer.js"]: "Vortex2+2/vortex2+2_multiplayer.js",
+    ["parts.js"]: "Vortex2+2/vortex2+2_demoparts.js"
 
 }
 

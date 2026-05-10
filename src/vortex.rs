@@ -44,6 +44,7 @@ fn main() -> wry::Result<()> {
         .with_https_scheme(true)
         .with_custom_protocol("local".into(), |_id, request| {
             let uri = request.uri().to_string();
+            println!("{}",uri);
             let file = uri.trim_start_matches("local://").trim_end_matches('/');
             let body = match std::fs::read(format!("src/redirects/{}", file)) {
                 Ok(v) => v,
