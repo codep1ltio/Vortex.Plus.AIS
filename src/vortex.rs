@@ -18,16 +18,10 @@ fn main() -> wry::Result<()> {
 
     // these are what gets injected during runtime
     let overrider = include_str!("Vortex2+2/javascript/overrider.js");
-    let inject = include_str!("Vortex2+2/javascript/inject.js");
     let search = include_str!("Vortex2+2/javascript/search.js");
-<<<<<<< Updated upstream
-    let shader = include_str!("Vortex2+2/javascript/shader.js");
     let maploader = include_str!("Vortex2+2/javascript/maploader.js");
-    let css = include_str!("style.css");
-=======
-    let maploader = include_str!("Vortex2+2/javascript/maploader.js");
+    let inject = include_str!("Vortex2+2/javascript/inject.js");
     let css = include_str!("Vortex2+2/style.css");
->>>>>>> Stashed changes
 
     let script = format!(
         r#"(() => {{
@@ -48,14 +42,8 @@ fn main() -> wry::Result<()> {
         .with_https_scheme(true)
         .with_custom_protocol("v22".into(), |_id, request| {
             let uri = request.uri().to_string();
-<<<<<<< Updated upstream
-            let file = uri.trim_start_matches("local://").trim_end_matches('/');
-            let body = match std::fs::read(format!("src/Vortex2+2/redirects/{}", file)) {
-=======
-            println!("{}", uri);
             let file = uri.trim_start_matches("v22://").trim_end_matches('/');
             let body = match std::fs::read(format!("src/Vortex2+2/{}", file)) {
->>>>>>> Stashed changes
                 Ok(v) => v,
                 Err(_) => {
                     return http::Response::builder()
