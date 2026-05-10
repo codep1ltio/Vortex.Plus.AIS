@@ -34,7 +34,7 @@ fn main() -> wry::Result<()> {
     );
 
     let window = WindowBuilder::new()
-        .with_title("Vortex Plus")
+        .with_title("Vortex AIS")
         .build(&event_loop)
         .unwrap();
 
