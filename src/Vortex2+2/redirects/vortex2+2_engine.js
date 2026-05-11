@@ -7,11 +7,11 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0x87CEEB, 192, 480);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 3200);
-
+let enableShadows = localStorage.getItem('enableShadows');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setClearColor(0x87CEEB);
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = enableShadows === 'yes';
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.getElementById("scene").appendChild(renderer.domElement);
 
@@ -26,7 +26,7 @@ scene.add(ambient);
 
 const sun = new THREE.DirectionalLight(0xffffff, 0.85);
 sun.position.set(1600, 3200, 1600);
-sun.castShadow = true;
+sun.castShadow = enableShadows === 'yes';
 sun.shadow.mapSize.width = 5000;
 sun.shadow.mapSize.height = 5000;
 sun.shadow.camera.near = 1;
@@ -77,6 +77,7 @@ function studNormalTex(rx, ry) {
 
 const geoCache = new Map();
 const matCache = new Map();
+const batches = new Map();
 
 function getCachedGeo(sw, sh, sd) {
     const key = `${sw},${sh},${sd}`;
@@ -146,6 +147,7 @@ function addStud(sw, sh, sd, color, x, y, z, rx = 0, ry = 0, rz = 0) {
     }
     return mesh;
 }
+
 
 function buildOBB(sw, sh, sd, cx, cy, cz, rx, ry, rz) {
     const m = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(rx, ry, rz));
@@ -329,10 +331,11 @@ let climbFwdX = 0, climbFwdZ = 0;
 let climbBlock = null;
 let climbCooldown = 0;
 const CLIMB_RISE_SPEED = 11.2;
-const CLIMB_REACH = 0.5;
+const CLIMB_SIDE_SPEED = 11.2;
+const CLIMB_REACH = 0.1;
 const CLIMB_FALL_CUTOFF = -200;
 const CLIMB_MAX_PART_H = 1.5;
-const CLIMB_WINDOW = 2.4;
+const CLIMB_WINDOW = 2.2;
 const CLIMB_JUMP_UP = 38;
 const CLIMB_JUMP_BACK_V = 14;
 const HANG_DEPTH = 1.2;
@@ -427,29 +430,35 @@ const cam = {
     distance: 25.6,
     minPitch: -1.55,
     maxPitch: 1.55,
-    minDist: 3.2,
+    minDist: 0.4,
     maxDist: 512,
 };
 
 const keys = {};
-
+let mouseLock = false;
+function setMouseLock(sl) {
+    if (mouseLock == sl) return
+    mouseLock = sl;
+    crosshair.style.display = mouseLock ? 'block' : 'none';
+    cursorEl.style.display = mouseLock ? 'none' : 'block';
+    if (!mouseLock) {
+        cursorX = window.innerWidth / 2;
+        cursorY = window.innerHeight / 2;
+        cursorEl.style.transform = `translate(${cursorX}px, ${cursorY}px)`;
+        if (character) {
+            character.rotation.y = ((character.rotation.y % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+            if (character.rotation.y > Math.PI) character.rotation.y -= 2 * Math.PI;
+        }
+    }
+}
+let isFirstPerson = false;
 document.addEventListener('keydown', e => {
     if (window._chatFocused) return;
     if (!locked) return;
     keys[e.code] = true;
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         shiftLock = !shiftLock;
-        crosshair.style.display = shiftLock ? 'block' : 'none';
-        cursorEl.style.display = shiftLock ? 'none' : 'block';
-        if (!shiftLock) {
-            cursorX = window.innerWidth / 2;
-            cursorY = window.innerHeight / 2;
-            cursorEl.style.transform = `translate(${cursorX}px, ${cursorY}px)`;
-            if (character) {
-                character.rotation.y = ((character.rotation.y % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-                if (character.rotation.y > Math.PI) character.rotation.y -= 2 * Math.PI;
-            }
-        }
+        if (!isFirstPerson) setMouseLock(shiftLock);
     }
     if (e.code === 'Comma') cam.yaw = Math.round((cam.yaw + Math.PI / 4) / (Math.PI / 4)) * (Math.PI / 4);
     if (e.code === 'Period') cam.yaw = Math.round((cam.yaw - Math.PI / 4) / (Math.PI / 4)) * (Math.PI / 4);
@@ -487,14 +496,13 @@ sfothThemeSong.addEventListener('ended', function () {
     this.currentTime = 0;
     this.play();
 }, false);
-
+const chatEl = document.getElementById('chat-window');
 renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
 renderer.domElement.addEventListener('click', () => {
     if (locked) {
         const cursorOver = _cursorOver;
         let guiHandled = false;
 
-        const chatEl = document.getElementById('chat-window');
         const topbarEl = document.getElementById('hud-topbar');
         const lbFriendEl = document.getElementById('lb-player-panel');
         const lbBodyEl = document.getElementById('lb-body');
@@ -547,6 +555,11 @@ renderer.domElement.addEventListener('click', () => {
             return;
         }
 
+        if (cursorOver(toggleShadowsCheckBox)) {
+            guiHandled = true;
+            toggleShadowsCheckBox.click();
+        }
+
         window.Leaderboard?.closeFriendPanel();
     }
     renderer.domElement.requestPointerLock();
@@ -560,20 +573,85 @@ overlay.addEventListener('click', () => {
     }
     renderer.domElement.requestPointerLock();
 });
-let canSlice = true;
+
+const settingsPanel = document.getElementById('settings-panel');
+settingsPanel.style.cursor = 'auto'
+chatEl.style.cursor = 'auto'
+const toggleShadows = document.createElement('div');
+toggleShadows.className = 'sp-row';
+let toggleShadowsleftText = document.createElement('span');
+toggleShadowsleftText.className = 'sp-label';
+toggleShadowsleftText.innerText = 'Toggle shadows'
+let toggleShadowsCheckBox = document.createElement('input');
+toggleShadowsCheckBox.type = "checkbox";
+if (enableShadows) {
+    toggleShadowsCheckBox.click();
+}
+toggleShadowsCheckBox.onchange = function () {
+    enableShadows = toggleShadowsCheckBox.checked;
+    localStorage.setItem('enableShadows', enableShadows ? 'yes' : 'no')
+    sun.castShadow = enableShadows;
+    renderer.shadowMap.enabled = enableShadows;
+}
+toggleShadows.appendChild(toggleShadowsleftText);
+toggleShadows.appendChild(toggleShadowsCheckBox);
+
+
+function makeSettingsSlider(text, min, max, def, step, onchange) {
+    def=localStorage.getItem(text) ? parseFloat(localStorage.getItem(text)) : def;
+    const sliderContainer = document.createElement('div');
+    sliderContainer.className = 'sp-row';
+    let sliderLeftText = document.createElement('span');
+    sliderLeftText.className = 'sp-label';
+    sliderLeftText.innerText = text
+    let sliderSlider = document.createElement('input');
+    sliderSlider.type = "range";
+    sliderSlider.min=min;
+    sliderSlider.max=max;
+    sliderSlider.step=step;
+    let sliderRightText = document.createElement('span');
+    sliderRightText.className = 'sp-val';
+    sliderRightText.innerText=def;
+    sliderSlider.oninput=function(){
+        sliderRightText.innerText = sliderSlider.value
+        localStorage.setItem(text,sliderSlider.value);
+        onchange(sliderSlider,Number(sliderSlider.value));
+    }
+    sliderContainer.appendChild(sliderLeftText);
+    sliderContainer.appendChild(sliderSlider);
+    sliderContainer.appendChild(sliderRightText);
+    settingsPanel.appendChild(sliderContainer);
+    sliderSlider.value=def;
+    console.log(sliderSlider.value)
+}
+
+const oofSound = new Audio(importedAssets.oofSound)
+
 const swordSlashSound = new Audio(importedAssets.swordSlash);
 swordSlashSound.preload = "auto";
 swordSlashSound.volume = 0.8;
+
+makeSettingsSlider('Music volume',0,1,0.9,0.1,function(slider,val){
+    sfothThemeSong.volume=val;
+})
+makeSettingsSlider('Sfx volume',0,1,1,0.1,function(slider,val){
+    swordSlashSound.volume=val*0.8;
+    oofSound.volume=val;
+})
+
+settingsPanel.appendChild(toggleShadows);
+
+let _sliderDragPreciseValue = 0;
+let canSlice = true;
 renderer.domElement.addEventListener('mousedown', e => {
     if (e.button === 2) { rmb = true; return; }
     if (e.button === 0 && locked) {
-        const panel = document.getElementById('settings-panel');
-        if (panel && panel.style.display !== 'none') {
-            for (const slider of panel.querySelectorAll('input[type=range]')) {
-                if (_cursorOver(slider)) { _sliderDrag = slider; return; }
+        if (settingsPanel && settingsPanel.style.display !== 'none') {
+            for (const slider of settingsPanel.querySelectorAll('input[type=range]')) {
+                if (_cursorOver(slider)) { _sliderDrag = slider; _sliderDragPreciseValue=parseFloat(slider.value); return; }
             }
         }
-        if (window.SWORD_FIGHT&&!playerSpecialValues.slicing && canSlice) {
+        if (window.SWORD_FIGHT && !playerSpecialValues.slicing && canSlice) {
             playerSpecialValues.slicing = true;
             canSlice = false
             swordSlashSound.currentTime = 0;
@@ -599,13 +677,14 @@ document.addEventListener('mousemove', e => {
         cursorY = Math.max(0, Math.min(window.innerHeight, cursorY + e.movementY));
         cursorEl.style.transform = `translate(${cursorX}px, ${cursorY}px)`;
         const range = parseFloat(_sliderDrag.max) - parseFloat(_sliderDrag.min);
-        let v = parseFloat(_sliderDrag.value) + e.movementX * range * 0.005;
-        v = Math.max(parseFloat(_sliderDrag.min), Math.min(parseFloat(_sliderDrag.max), v));
+        let v = _sliderDragPreciseValue + e.movementX * range / _sliderDrag.offsetWidth;
+        _sliderDragPreciseValue= Math.max(parseFloat(_sliderDrag.min), Math.min(parseFloat(_sliderDrag.max), v));
+        v = Math.max(parseFloat(_sliderDrag.min), Math.min(parseFloat(_sliderDrag.max), Math.round(v/_sliderDrag.step)*_sliderDrag.step));
         _sliderDrag.value = v;
         _sliderDrag.dispatchEvent(new Event('input', { bubbles: true }));
         return;
     }
-    if (shiftLock || rmb) {
+    if (mouseLock || rmb) {
         cam.yaw -= e.movementX * CAM_H_SENS;
         cam.pitch = Math.max(cam.minPitch, Math.min(cam.maxPitch, cam.pitch + e.movementY * CAM_V_SENS));
     } else {
@@ -628,6 +707,11 @@ renderer.domElement.addEventListener('wheel', e => {
         }
     }
     cam.distance = Math.max(cam.minDist, Math.min(cam.maxDist, cam.distance + e.deltaY * 0.015));
+    if (cam.distance < 2) {
+        setMouseLock(true)
+    } else {
+        setMouseLock(shiftLock)
+    }
 }, { passive: true });
 
 function lerpAngle(current, target, t) {
@@ -860,7 +944,7 @@ function resolveOBBV(nearby) {
         const pushY = absY > 0.001 ? depth / absY : depth;
         if (ny > 0) {
             character.position.y += pushY;
-            if (velY < 0) { velY = 0; grounded = true; extraVelX = 0; extraVelZ = 0; }
+            if (velY <= 0) { velY = 0; grounded = true; extraVelX = 0; extraVelZ = 0; }
         } else {
             character.position.y -= pushY;
             if (velY > 0) velY = 0;
@@ -935,6 +1019,7 @@ function resolveBlocksV(nearby, dt) {
             if (fy < b.minY) {
                 let goal = b.minY - CHAR_HEIGHT + CHAR_FOOT_OFFSET;
                 let change = goal - character.position.y;
+                if (change > 0) grounded = true;
                 character.position.y += Math.sign(change) * Math.min(Math.abs(change), STEP_CLIMB_SPEED * dt);
                 if (velY > 0) velY = 0;
             }
@@ -1079,7 +1164,7 @@ function update(dt) {
         climbBlock = stillValid;
         climbLedgeY = stillValid.maxY;
 
-        if (shiftLock) {
+        if (mouseLock) {
             const grabAngle = Math.atan2(climbFwdX, climbFwdZ);
             const camAngle = cam.yaw + Math.PI;
             const diff = ((camAngle - grabAngle) % (2 * Math.PI) + 3 * Math.PI) % (2 * Math.PI) - Math.PI;
@@ -1186,7 +1271,7 @@ function update(dt) {
         velX = moveInput.x * WALK_SPEED;
         velZ = moveInput.z * WALK_SPEED;
 
-        if (!shiftLock) {
+        if (!mouseLock) {
             const targetAngle = Math.atan2(moveInput.x, moveInput.z);
             character.rotation.y = lerpAngle(character.rotation.y, targetAngle, Math.min(1, ROT_SPEED * dt));
         }
@@ -1262,7 +1347,7 @@ function update(dt) {
         if (Math.abs(extraVelZ) < 0.3) extraVelZ = 0;
     }
 
-    if (shiftLock) character.rotation.y = cam.yaw + Math.PI;
+    if (mouseLock) character.rotation.y = cam.yaw + Math.PI;
 
     climbCooldown = Math.max(0, climbCooldown - dt);
 
@@ -1310,7 +1395,6 @@ function update(dt) {
 
     updateAnimations(dt, moving);
 }
-
 function updateCamera() {
     if (!character) return;
 
@@ -1325,7 +1409,13 @@ function updateCamera() {
         character.position.z
     );
 
-    if (shiftLock) {
+    let cdist = cam.distance
+    isFirstPerson = cdist < 2;
+    if (isFirstPerson) {
+        cdist = 0.5;
+        pivot.x -= sinYaw * 1;
+        pivot.z -= cosYaw * 1;
+    } else if (shiftLock) {
         pivot.x += cosYaw * SHIFT_LOCK_OFFSET;
         pivot.z += -sinYaw * SHIFT_LOCK_OFFSET;
     }
@@ -1335,14 +1425,13 @@ function updateCamera() {
     }
 
     camera.position.set(
-        pivot.x + cam.distance * cosPitch * sinYaw,
-        pivot.y + cam.distance * sinPitch,
-        pivot.z + cam.distance * cosPitch * cosYaw
+        pivot.x + cdist * cosPitch * sinYaw,
+        pivot.y + cdist * sinPitch,
+        pivot.z + cdist * cosPitch * cosYaw
     );
     camera.lookAt(pivot);
 }
 
-const oofSound = new Audio(importedAssets.oofSound)
 sfothThemeSong.preload = "auto";
 sfothThemeSong.volume = 1;
 let sword;
@@ -1355,14 +1444,12 @@ function swordUpdate() {
     if (!character) return
     if (!anim.bones.Right_Arm) return
     anim.bones.Right_Arm.position.y = 1.5
-    anim.bones.Right_Arm.position.z = -0.5
+    anim.bones.Right_Arm.position.z = isFirstPerson ? 0.3 : -0.5
     if (!loadingSword) {
         loadingSword = true;
         fbxLoader.load(importedAssets.swordMdl, (fbx) => {
             fbx.scale.multiplyScalar(0.005);
             sword = fbx;
-            let mat = new THREE.MeshPhongMaterial({map:tlLoader.load(importedAssets.swordTex)});
-            sword.children[0].material=mat;
             sword.castShadow = true;
             sword.receiveShadow = true;
             sword.rotation.order = 'YXZ';
@@ -1377,6 +1464,7 @@ function swordUpdate() {
     let slicing = playerSpecialValues.slicing
 
     let fwd = slicing ? 3.2 : 1.5;
+    fwd += isFirstPerson ? 0.8 : 0;
     let right = 1.5;
     let up = slicing ? 1.5 : 2.8;
 
