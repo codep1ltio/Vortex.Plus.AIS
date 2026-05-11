@@ -4,11 +4,11 @@
 
 ### Addressing Drama
 
-> Vortex2+2 IS NOT a fork of Vortex+ or now known as VortexPro
+> Vortex2+2 IS NOT a fork of Vortex+ or now known as VortexPro.
 > Klingri, owner of Vortex+/Pro is rude, claims ownership for things he didn't make,
 > also very immature, and disrespectful towards even their own members.
 - Sider Information
-- > Klingri recently got banned from Vortex for framing one of our developers (@Inuk1)
+  > Klingri recently got banned from Vortex for framing one of our developers (@Inuk1)
   > and doing racial speech using inspect element. Framing inuk.
 ---
 
