@@ -434,7 +434,7 @@
         if (typeof connect != 'undefined') connect()
 
         let watermark = document.createElement('a')
-        watermark.innerHTML = 'Vortex2+2 v0.1.0 by @inuk'
+        watermark.innerHTML = 'Vortex2+2 v0.1.0 by @inuk & Vortex AIS v1.3 by @cod.io'
         Object.assign(watermark.style, {
             position: 'fixed',
             bottom: '5px',
