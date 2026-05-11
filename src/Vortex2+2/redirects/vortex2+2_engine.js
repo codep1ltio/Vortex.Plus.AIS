@@ -5,7 +5,7 @@ const _loadingScreen = document.createElement("div");
 _loadingScreen.id = "loadingScreen";
 const _loadingLogo = document.createElement("div");
 _loadingLogo.id = "loadingLogo";
-_loadingLogo.textContent = "VORTEX 2+2";
+_loadingLogo.textContent = "VORTEX 2+2 AIS";
 const _loadingBarBg = document.createElement("div");
 _loadingBarBg.id = "loadingBarBg";
 const _loadingBarFill = document.createElement("div");
@@ -33,7 +33,7 @@ THREE.DefaultLoadingManager.onLoad = function () { };
 
 const STUDS_PER_TILE = 4;
 const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x87CEEB, 0.1);
+scene.fog = new THREE.Fog(0x87CEEB, 192, 486);
 
 const camera = new THREE.PerspectiveCamera(85, window.innerWidth / window.innerHeight, 0.1, 3200);
 
