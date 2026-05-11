@@ -105,7 +105,7 @@ function _setPosY(bones, rest, name, offset, sp, dt) {
 }
 
 let swords = new Map()
-function _animateRemote(id,r, dt) {
+function _animateRemote(id, r, dt) {
     const { bones, rest } = r.meshes;
     const sp = 12;
     r.animTime += dt;
@@ -163,7 +163,7 @@ function _animateRemote(id,r, dt) {
     if (window.SWORD_FIGHT) {
         let sword = swords.get(id);
         if (!swords.has(id)) {
-            swords.set(id,false);
+            swords.set(id, false);
             console.log('no sword for id ' + id + ', making one now!')
             fbxLoader.load(importedAssets.swordMdl, (fbx) => {
                 fbx.scale.multiplyScalar(0.005);
@@ -176,7 +176,7 @@ function _animateRemote(id,r, dt) {
             });
             return
         }
-        if(!sword) return
+        if (!sword) return
         _setB(bones, rest, 'Right_Arm', 'x', -Math.PI * 0.5, 1, 1);
         bones.Right_Arm.position.y = 1.5
         bones.Right_Arm.position.z = -0.5
@@ -359,11 +359,11 @@ function _redrawHealthbar(id, health) {
     grad.addColorStop(1, "#2b5806");
     ctx.fillStyle = grad;
     ctx.fillRect(5, 5, Math.max(5, Math.min(canvas.width - 10, canvas.width * health)), canvas.height - 10);
-    ctx.font = 'small-caps bold '+(canvas.height-20)+'px sans-serif';
+    ctx.font = 'small-caps bold ' + (canvas.height - 20) + 'px sans-serif';
     ctx.fillStyle = "white";
-    ctx.textAlign='end'
-    ctx.textBaseline='middle'
-    ctx.fillText("HEALTH", canvas.width - 10, (canvas.height - 10)*0.65);
+    ctx.textAlign = 'end'
+    ctx.textBaseline = 'middle'
+    ctx.fillText("HEALTH", canvas.width - 10, (canvas.height - 10) * 0.65);
 
     if (!hbar.sprite) {
         hbar.sprite = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true }));
@@ -479,11 +479,11 @@ let _reconnectAttempts = 0;
 const _MAX_RECONNECTS = 3;
 
 async function connect() {
-    const res = await fetch(`/api/ws-ticket?game_id=${window.GAME_ID || 0}&fingerprint=${encodeURIComponent(window._fingerprint || '')}`).then(r => r.ok ? r.json() : null);
+    const res = await fetch(`/api/ws-ticket?game_id=${window.GAME_ID || 0}&fingerprint=${encodeURIComponent(window._fingerprint || '')}&fp_token=`).then(r => r.ok ? r.json() : null);
     if (!res) { console.log('failed to connect'); setTimeout(connect, 4000); return; }
 
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    ws = new WebSocket(`${proto}://${location.host}/ws/game?ticket=${res.ticket}`);
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    ws = new WebSocket(proto + "://" + location.host + "/ws/play?t=" + res.ticket);
 
     ws.onopen = () => {
         console.log('websocket opened');
@@ -538,8 +538,8 @@ function decodeNetworkData(playerData, r) {
 
     let healthBits = (specialState >>> 0) & ((1 << 4) - 1);
     let slicingBits = (specialState >>> 4) & ((1 << 1) - 1);
-    if(!customPlayerData[playerData.id]) {
-        customPlayerData[playerData.id]={
+    if (!customPlayerData[playerData.id]) {
+        customPlayerData[playerData.id] = {
             health: 1,
             slicing: false,
         }
@@ -592,6 +592,9 @@ function handle(d) {
                 addRemote(p.id, p.username, p.is_staff, p.is_booster);
                 _showHealthBar(p.id)
             }
+            if (d.shirt_id) {
+                _vortex.applyShirt(d.shirt_id ? "/shirt/" + d.shirt_id + ".png" : null);
+            }
             _showHealthBar(myId);
             fetchFriendData();
             break;
@@ -611,7 +614,7 @@ function handle(d) {
             break;
         }
 
-        case 'kick_log': {
+        case 'kickbroad': {
             Chat.clearPlayerMsg(d.username);
             Chat.systemRed(`${d.username} was kicked by ${d.by}.`);
             removeRemote(d.id);
@@ -633,6 +636,11 @@ function handle(d) {
             break;
         }
 
+        case "chat_muted": {
+            Chat.system("You have been muted for " + d.minutes + " minutes by an administrator.");
+            break;
+        }
+
         case 'chat_throttled': {
             Chat.warn(`Please wait ${d.wait}s before sending another message.`);
             break;
@@ -640,6 +648,53 @@ function handle(d) {
 
         case 'chat_blocked': {
             Chat.warn(d.msg);
+            break;
+        }
+
+        case "system": {
+            Chat.system(d.msg);
+            break;
+        }
+
+        case "muted_list": {
+            window.adminPanel?.onMuted?.(d.user_id, d.username);
+            mutedSet.add(d.user_id);
+            Leaderboard.updateStatus(d.user_id, "muted");
+            break;
+        }
+        case "unmuted_list": {
+            window.adminPanel?.onUnmuted?.(d.user_id);
+            mutedSet.delete(d.user_id);
+            Leaderboard.updateStatus(d.user_id, "online");
+            break;
+        }
+        case "banned_list": {
+            window.adminPanel?.onBanned?.(d.user_id);
+            bannedSet.add(d.user_id);
+            kickedSet.add(d.user_id);
+            Leaderboard.updateStatus(d.user_id, "banned");
+            break;
+        }
+        case "chat_count": {
+            window.adminPanel?.chat_count?.(d.unread_count);
+            break;
+        }
+        case "shirt_changed": {
+            window.adminPanel?.shirt_changed?.(d.user_id);
+            break;
+        }
+        case "shirt_update": {
+            const rp = remotePlayers.get(d.id);
+            if (rp?.meshes) {
+                _vortex.applyShirtToMesh(rp.meshes.shirtMesh, d.shirt_id ? "/shirt/" + d.shirt_id + ".png" : null);
+            } else {
+                const pending = pendingPlayers.get(d.id);
+                if (pending) pending.shirt_id = d.shirt_id;
+            }
+            break;
+        }
+        case "screen_open": {
+            window.openScreen?.(d.screen_id, d.token);
             break;
         }
 
@@ -797,7 +852,7 @@ window._mpUpdate = function (dt) {
         else if (g.rotation.y < -Math.PI) g.rotation.y += 2 * Math.PI;
 
         if (camPos) {
-            _animateRemote(key,r, dt);
+            _animateRemote(key, r, dt);
         }
     }
 
