@@ -11,6 +11,27 @@ use tao::{
 };
 use wry::{WebViewBuilder, WebViewBuilderExtWindows, http};
 
+use std::{env, fs, io};
+
+pub fn read_mods() -> io::Result<Vec<String>> {
+    let exe = env::current_exe()?;
+    let dir = exe.parent().unwrap();
+
+    let mods = dir.join("mods");
+    let mut files = Vec::new();
+
+    for entry in fs::read_dir(mods)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() {
+            let content = fs::read_to_string(path)?;
+            files.push(content);
+        }
+    }
+    Ok(files)
+}
+
 fn main() -> wry::Result<()> {
     println!("Launching Vortex");
 
@@ -23,12 +44,21 @@ fn main() -> wry::Result<()> {
     let inject = include_str!("Vortex2+2/javascript/inject.js");
     let css = include_str!("Vortex2+2/style.css");
 
+    let mods = read_mods().unwrap_or_else(|_| std::process::exit(0));
+    let mods_script = mods
+        .into_iter()
+        .map(|m| {
+            format!(r#"try {{{}}} catch (error) {{console.warn(error);}}"#,m)}).collect::<String>();
+
     let script = format!(
         r#"(() => {{
         try {{{overrider}}} catch (error) {{ console.warn(error); }}
         try {{{search}}} catch (error) {{ console.warn(error); }}
         try {{{maploader}}} catch (error) {{ console.warn(error); }}
         try {{{inject}}} catch (error) {{ console.warn(error); }}
+
+        {mods_script} /* from mods */
+
         run(`{css}`)
         }})();"#
     );

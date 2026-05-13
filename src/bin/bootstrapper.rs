@@ -1,8 +1,7 @@
 use eframe::egui;
-use std::time::{Instant};
 
 mod launcher;
-use launcher::launcher::launch_vortex;
+use launcher::launcher::*;
 
 fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
@@ -14,7 +13,7 @@ fn main() -> eframe::Result<()> {
     };
 
     eframe::run_native(
-        "Vortex+ Launcher",
+        "Vortex2+2 AIS Launcher",
         options,
         Box::new(|cc| Ok(Box::new(App::new(cc)))),
     )
@@ -22,33 +21,23 @@ fn main() -> eframe::Result<()> {
 
 struct App {
     status: String,
-    checking_updates: bool,
-    activity_started_at: Option<Instant>,
-    auto_update_check: bool,
-    auto_launch: bool,
-    show_log: bool,
-    launching: bool,
-    repairing: bool,
+    check_for_updates: bool,
+    launched: bool,
     logs: Vec<String>,
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
-            status: "Ready.".to_string(),
-            checking_updates: false,
-            activity_started_at: None,
-            auto_update_check: true,
-            auto_launch: false,
-            show_log: true,
-            launching: false,
-            repairing: false,
+            status: "".to_string(),
+            check_for_updates: true,
+            launched: false,
             logs: vec![
-                "Launcher started.".to_string(),
+                "Bootstrapper Loaded.".to_string(),
                 "-------------------------------".to_string(),
                 "If you haven't yet, please join our discord!".to_string(),
                 "We need your help and your suggestions!".to_string(),
-                "https://discord.gg/Q8wZHJ8PuF".to_string(),
+                "https://discord.gg/E9y6WfEdPW".to_string(),
                 "-------------------------------".to_string(),
             ],
         }
@@ -69,20 +58,22 @@ impl App {
     }
 
     fn start_update_check(&mut self) {
-        self.checking_updates = true;
-        self.activity_started_at = Some(Instant::now());
+        self.check_for_updates = true;
         self.status = "Checking for updates...".to_string();
         self.push_log("Update check started.");
         // TODO: check and actually update
     }
 
-    fn start_repair_procedure(&mut self) {
-        self.repairing = true;
-        // TODO: repair
+    fn open_mods_folder(&mut self) {
+        open_mods_folder()
+            .map(|_| self.push_log("Opened mods folder"))
+            .unwrap_or_else(|e: std::io::Error| {
+                self.push_log(&format!("Error while opening mods folder: {}", e));
+            });
     }
 
     fn launch(&mut self) {
-        self.status = "Launching Vortex+...".to_string();
+        self.status = "Launching Vortex AIS...".to_string();
         self.push_log("Launch requested.");
 
         match launch_vortex() {
@@ -95,7 +86,7 @@ impl App {
                 self.push_log(
                     "If you're unsure of the cause, feel free to contact us in our discord.",
                 );
-                self.launching = false;
+                self.launched = false;
             }
         }
     }
@@ -111,106 +102,91 @@ impl eframe::App for App {
                 ui.heading("Options");
                 ui.add_space(8.0);
 
-                ui.checkbox(&mut self.auto_update_check, "Check updates on start");
-                ui.checkbox(&mut self.auto_launch, "Launch after update check");
-                ui.checkbox(&mut self.show_log, "Show log");
+                ui.checkbox(&mut self.check_for_updates, "Check for updates on launch");
 
                 ui.add_space(12.0);
                 ui.monospace("Current Build");
-                ui.label("Vortex+ bootstrapper");
-                ui.label("Launcher v0.1");
+                ui.label("Vortex2+2 AIS bootstrapper");
+                ui.label("Launcher v0.2");
 
                 ui.add_space(12.0);
-                let btn_disable = self.launching || self.checking_updates || self.repairing;
+                let btn_disable = self.launched;
                 if ui
-                    .add_enabled(
-                        !btn_disable,
-                        egui::Button::new("Check for updates"),
-                    )
+                    .add_enabled(!btn_disable, egui::Button::new("Check for updates"))
                     .clicked()
                 {
                     self.start_update_check();
                 }
 
                 if ui
-                    .add_enabled(
-                        !btn_disable,
-                        egui::Button::new("Repair Vortex"),
-                    )
+                    .add_enabled(!btn_disable, egui::Button::new("Open Mods Folder"))
                     .clicked()
                 {
-                    self.start_repair_procedure();
+                    self.open_mods_folder();
                 }
 
                 ui.add_space(12.0);
                 ui.monospace("Contribute | Community");
-                ui.label("github.com/codep1ltio/Vortex.Plus.AIS");
-                ui.label("discord.gg/Q8wZHJ8PuF");
+                ui.label("github.com/codep1ltio/Vortex.AIS");
+                ui.label("discord.gg/E9y6WfEdPW");
             });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.vertical(|ui| {
                 ui.add_space(10.0);
                 ui.heading("Welcome");
-                ui.label("Use this launcher to update and start Vortex+.");
+                ui.label("Vortex2+2 AIS is here to make your life easier.");
                 ui.add_space(10.0);
             });
 
-            ui.group(|ui| {
+            ui.vertical(|ui| {
                 ui.vertical_centered(|ui| {
-                    ui.label("Status");
                     ui.label(&self.status);
+                    if !self.status.is_empty() {
+                        ui.add_space(1.5);
+                    }
 
-                    ui.add_space(1.5);
-
-                    let btn_disable = self.launching || self.checking_updates || self.repairing;
-
+                    let btn_disable = self.launched;
                     let launch_button = ui.add_enabled(
                         !btn_disable,
-                        egui::Button::new("Launch Vortex+")
-                            .rounding(10.0)
-                            .min_size(egui::vec2(220.0, 36.0)),
+                        egui::Button::new("Launch and Update Vortex AIS")
+                            .rounding(15.0)
+                            .min_size(egui::vec2(220.0, 40.0)),
                     );
 
                     if launch_button.clicked() {
-                        self.launching = true;
+                        self.launched = true;
                         self.launch();
                     }
 
-                    if self.auto_update_check && !self.checking_updates {
-                        ui.small("Auto update check is enabled.");
-                    }
+                    ui.small(format!("{}", 
+                        (if self.check_for_updates { "" } else { "Update checking is disabled." })
+                    ));
+                    ui.add_space(1.5);
                 });
             });
 
             ui.add_space(12.0);
 
-            if self.show_log {
-                ui.group(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.monospace("Console");
-                        if ui.small_button("Clear").clicked() {
-                            self.logs.clear();
+            ui.group(|ui| {
+                ui.horizontal(|ui| {
+                    ui.monospace("Console");
+                    if ui.small_button("Clear").clicked() {
+                        self.logs.clear();
+                    }
+                });
+
+                ui.separator();
+
+                egui::ScrollArea::vertical()
+                    .max_height(180.0)
+                    .stick_to_bottom(true)
+                    .show(ui, |ui| {
+                        for line in &self.logs {
+                            ui.monospace(line);
                         }
                     });
-
-                    ui.separator();
-
-                    egui::ScrollArea::vertical()
-                        .max_height(180.0)
-                        .stick_to_bottom(true)
-                        .show(ui, |ui| {
-                            for line in &self.logs {
-                                ui.monospace(line);
-                            }
-                        });
-                });
-            }
+            });
         });
-
-        if self.auto_launch && !self.checking_updates {
-            self.auto_launch = false;
-            self.launch();
-        }
     }
 }
