@@ -37,7 +37,7 @@ impl Default for App {
                 "-------------------------------".to_string(),
                 "If you haven't yet, please join our discord!".to_string(),
                 "We need your help and your suggestions!".to_string(),
-                "https://discord.gg/E9y6WfEdPW".to_string(),
+                "discord.gg/E9y6WfEdPW".to_string(),
                 "-------------------------------".to_string(),
             ],
         }
